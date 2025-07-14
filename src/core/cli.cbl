@@ -13,6 +13,8 @@
          INPUT-OUTPUT SECTION.
 
        DATA DIVISION.
+       COPY './copybook/login-data.cpy'.
+       COPY './copybook/register-data.cpy'.
        WORKING-STORAGE SECTION.
 
        77 WS-OPTION        PIC 9.
@@ -21,10 +23,6 @@
        77 WS-ACCOUNT-FLAG  PIC X VALUE "N".
            88 LOGGED-IN    VALUE "Y".
            88 REG-SUCCESS  VALUE "Y".
-
-       77 WS-USERNAME      PIC X(30) VALUE SPACES.
-       77 WS-EMAIL         PIC X(30) VALUE SPACES.
-       77 WS-PASSWORD      PIC X(30) VALUE SPACES.
 
        LINKAGE SECTION.
 
@@ -50,10 +48,25 @@
        REGISTRATION-PROCESS.
            DISPLAY ">>> REGISTER <<<"
            DISPLAY "User: " WITH NO ADVANCING
-           ACCEPT WS-USERNAME
+           ACCEPT RD-USERNAME OF REGISTER-DATA
+           DISPLAY "Email: " WITH NO ADVANCING
+           ACCEPT RD-EMAIL OF REGISTER-DATA
            DISPLAY "Password: " WITH NO ADVANCING
-           ACCEPT OMITTED WS-PASSWORD
-           IF WS-USERNAME NOT = SPACES AND WS-PASSWORD NOT = SPACES
+           ACCEPT RD-PWD OF REGISTER-DATA WITH NO ECHO
+
+           CALL "BLM-USER-CONTROLLER" USING "VALIDATE-USER",
+                                            REGISTER-DATA,
+                                            WS-RET-CODE
+                                      RETURNING RETURN-CODE
+           EVALUATE RETURN-CODE
+               WHEN 0 CONTINUE
+               WHEN 4 DISPLAY "Invalid username"
+               WHEN 8 DISPLAY "Invalid email"
+               WHEN OTHER DISPLAY "System error"
+           END-EVALUATE
+
+           IF (RD-USERNAME NOT = SPACES)
+              AND (RD-PWD NOT = SPACES)
              MOVE "Y" TO WS-ACCOUNT-FLAG
              DISPLAY "Registration successful."
            ELSE
@@ -64,12 +77,12 @@
       *> -----------------------------------------------
         LOGIN-PROCESS.
            DISPLAY ">>> LOGIN <<<"
-           DISPLAY "User: " WITH NO ADVANCING
-           ACCEPT WS-USERNAME
+           DISPLAY "Email: " WITH NO ADVANCING
+           ACCEPT LD-EMAIL OF LOGIN-DATA
            DISPLAY "Password: " WITH NO ADVANCING
-           ACCEPT OMITTED WS-PASSWORD
-           IF LOGGED-IN AND (WS-USERNAME = "imlostish")
-                         AND (WS-PASSWORD = "imlostish")
+           ACCEPT LD-PWD OF LOGIN-DATA WITH NO ECHO
+           IF (LD-EMAIL = "imlostish")
+              AND (LD-PWD = "imlostish")
                DISPLAY "Login OK."
                PERFORM ACCOUNT-MENU
            ELSE

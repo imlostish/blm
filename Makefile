@@ -4,6 +4,9 @@ BUILD_ASM_DIR 	:= $(BUILD_DIR)/asm
 BUILD_SBIN_DIR 	:= $(BUILD_DIR)/sbin
 BUILD_BIN_DIR 	:= $(BUILD_DIR)/bin
 
+BUILD_BIN_CONTROLLERS_DIR := $(BUILD_BIN_DIR)/controllers
+BUILD_BIN_AUTH_DIR := $(BUILD_BIN_DIR)/auth
+
 COBC              := cobc
 COBC_FLAGS        := -Wmissing-newline -free -Wall
 
@@ -12,55 +15,66 @@ COBC_FLAGS        := -Wmissing-newline -free -Wall
 SRC_DIR           := src/core
 SRC_CONTROLLERS   := $(SRC_DIR)/controllers
 SRC_UTILS   	  := $(SRC_DIR)/utils
+SRC_AUTH 		  := $(SRC_DIR)/auth
 
 MAIN_SRC          := $(SRC_DIR)/main.cbl
 CLI_SRC           := $(SRC_DIR)/cli.cbl
-# CONTROLLERS_SRC   := $(wildcard $(SRC_CONTROLLERS)/*.cbl)
+CONTROLLERS_SRC   := $(wildcard $(SRC_CONTROLLERS)/*.cbl)
+AUTH_SRC 		  := $(wildcard $(SRC_AUTH)/*.cbl)
 
-# Obj for modular compilation
-OBJ_FILES         := \
-	$(BUILD_BIN_DIR)/main.o \
-	$(BUILD_BIN_DIR)/cli.o \
-	$($(BUILD_BIN_DIR)/%.o, $(CONTROLLERS_SRC))
-# patsubst $(SRC_CONTROLLERS)/%.cbl,
+OBJ_FILES := \
+    $(BUILD_BIN_DIR)/main.o \
+    $(BUILD_BIN_DIR)/cli.o \
+    $(patsubst $(SRC_CONTROLLERS)/%.cbl, $(BUILD_BIN_CONTROLLERS_DIR)/%.o, $(CONTROLLERS_SRC)) \
+    $(patsubst $(SRC_AUTH)/%.cbl, $(BUILD_BIN_AUTH_DIR)/%.o, $(AUTH_SRC))
 
 SINGLE_BINARY     := $(BUILD_SBIN_DIR)/blm_single
-MODULAR_BINARY    := $(BUILD_BIN_DIR)/blm_modular
+MODULAR_BINARY    := $(BUILD_BIN_DIR)/blm
 
-all: prepare $(SINGLE_BINARY) $(MODULAR_BINARY)
+all: prepare single modular
 
 prepare:
 	@mkdir -p $(BUILD_C_DIR)
 	@mkdir -p $(BUILD_ASM_DIR)
 	@mkdir -p $(BUILD_SBIN_DIR)
 	@mkdir -p $(BUILD_BIN_DIR)
+	@mkdir -p $(BUILD_BIN_CONTROLLERS_DIR)
+	@mkdir -p $(BUILD_BIN_AUTH_DIR)
 
 # -------------------------------------------------------------
 # Single Binary Compilation
 # -------------------------------------------------------------
 
-$(SINGLE_BINARY): $(MAIN_SRC) $(CLI_SRC)
+single: $(SINGLE_BINARY)
+
+$(SINGLE_BINARY): $(MAIN_SRC) $(CLI_SRC) $(CONTROLLERS_SRC) $(AUTH_SRC)
 	$(COBC) $(COBC_FLAGS) -x $^ -o $@
-	@echo "✅ Single binary compilation complete → $@"
+	@echo "✅ Single binary: $@"
+
 
 # -------------------------------------------------------------
 # Modular Compilation
 # -------------------------------------------------------------
 
+modular: $(MODULAR_BINARY)
+
 # Compile each .cbl → .o
-$(BUILD_BIN_DIR)/main.o: $(MAIN_SRC)
+$(BUILD_BIN_DIR)/blm.o: $(MAIN_SRC)
 	$(COBC) $(COBC_FLAGS) -c $< -o $@
 
 $(BUILD_BIN_DIR)/cli.o: $(CLI_SRC)
 	$(COBC) $(COBC_FLAGS) -c $< -o $@
 
-$(BUILD_BIN_DIR)/%.o: $(SRC_CONTROLLERS)/%.cbl
+$(BUILD_BIN_CONTROLLERS_DIR)/%.o: $(SRC_CONTROLLERS)/%.cbl
+	$(COBC) $(COBC_FLAGS) -c $< -o $@
+
+$(BUILD_BIN_AUTH_DIR)/%.o: $(SRC_AUTH)/%.cbl
 	$(COBC) $(COBC_FLAGS) -c $< -o $@
 
 # Link all objects → modular binary
-$(MODULAR_BINARY): $(OBJ_FILES)
-	$(COBC) $(COBC_FLAGS) $^ -x -o $@
-	@echo "✅ Modular binary compilation complete → $@"
+$(MODULAR_BINARY): $(OBJ_FILES) \
+    $(COBC) $(COBC_FLAGS) $^ -x -o $@
+    @echo "✅ Modular binary: $@"
 
 # -------------------------------------------------------------
 # Clean

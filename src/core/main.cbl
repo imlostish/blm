@@ -20,6 +20,9 @@
        PROCEDURE DIVISION.
 
            DISPLAY ">>> BLM STARTED <<<"
-           CALL "BLM-CLI"
+           CALL "BLM-CLI" RETURNING RETURN-CODE
+           IF RETURN-CODE NOT = 0
+               DISPLAY "Error in CLI module"
+           END-IF
            DISPLAY "%> Come back soon!"
            STOP RUN.
