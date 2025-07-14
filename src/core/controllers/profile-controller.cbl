@@ -4,7 +4,7 @@
       *> Purpose: self-learning
       *> License: MIT
       *> PLEASE GIVE ME A JOB
-      *> ----------------------------------------------------------------       identification division.
+      *> ----------------------------------------------------------------
        IDENTIFICATION DIVISION.
        PROGRAM-ID. BLM-PROFILE-CONTROLLER.
        ENVIRONMENT DIVISION.
@@ -12,6 +12,8 @@
        INPUT-OUTPUT SECTION.
        DATA DIVISION.
        WORKING-STORAGE SECTION.
+       COPY 'profile.cpy'.
+       PROCEDURE DIVISION.
 
            DISPLAY "blm profile controller"
 

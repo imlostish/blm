@@ -1,7 +1,8 @@
       *> ----------------------------------------------------------------
       *> Author: imlostish
+      *> Module: cli.cbl
       *> Date:   13/07/2025
-      *> Purpose: self-learning
+      *> Purpose: Terminal CLI
       *> License: MIT
       *> PLEASE GIVE ME A JOB
       *> ----------------------------------------------------------------
@@ -13,10 +14,12 @@
          INPUT-OUTPUT SECTION.
 
        DATA DIVISION.
-       COPY './copybook/login-data.cpy'.
-       COPY './copybook/register-data.cpy'.
-       WORKING-STORAGE SECTION.
 
+       WORKING-STORAGE SECTION.
+       COPY 'login-data.cpy'.
+       COPY 'register-data.cpy'.
+
+       77 WS-RET-CODE      PIC S9(4) COMP VALUE 0.
        77 WS-OPTION        PIC 9.
        77 WS-EXIT-FLAG     PIC X VALUE "N".
            88 EXIT-APP     VALUE "Y".
@@ -43,8 +46,9 @@
              WHEN 2 PERFORM LOGIN-PROCESS
              WHEN 3 MOVE "Y" TO WS-EXIT-FLAG
              WHEN OTHER DISPLAY "Invalid option"
-           END-EVALUATE
-       .
+           END-EVALUATE.
+           EXIT.
+
        REGISTRATION-PROCESS.
            DISPLAY ">>> REGISTER <<<"
            DISPLAY "User: " WITH NO ADVANCING
@@ -54,16 +58,11 @@
            DISPLAY "Password: " WITH NO ADVANCING
            ACCEPT RD-PWD OF REGISTER-DATA WITH NO ECHO
 
-           CALL "BLM-USER-CONTROLLER" USING "VALIDATE-USER",
-                                            REGISTER-DATA,
-                                            WS-RET-CODE
-                                      RETURNING RETURN-CODE
-           EVALUATE RETURN-CODE
-               WHEN 0 CONTINUE
-               WHEN 4 DISPLAY "Invalid username"
-               WHEN 8 DISPLAY "Invalid email"
-               WHEN OTHER DISPLAY "System error"
-           END-EVALUATE
+          CALL "BLM-USER-CONTROLLER"
+           USING "CREATE-USER", REGISTER-DATA, WS-RET-CODE
+           IF WS-RET-CODE NOT = 0
+              DISPLAY "Error creating user: ", WS-RET-CODE
+           END-IF.
 
            IF (RD-USERNAME NOT = SPACES)
               AND (RD-PWD NOT = SPACES)
@@ -71,28 +70,30 @@
              DISPLAY "Registration successful."
            ELSE
                DISPLAY "Invalid data"
-           END-IF
-       .
+           END-IF.
+           EXIT.
 
-      *> -----------------------------------------------
-        LOGIN-PROCESS.
+       LOGIN-PROCESS.
            DISPLAY ">>> LOGIN <<<"
            DISPLAY "Email: " WITH NO ADVANCING
            ACCEPT LD-EMAIL OF LOGIN-DATA
            DISPLAY "Password: " WITH NO ADVANCING
            ACCEPT LD-PWD OF LOGIN-DATA WITH NO ECHO
+           CALL "BLM-USER-AUTH" USING "HASH-PASSWORD",
+                                      LD-PWD,
+                                      WS-RET-CODE
+
            IF (LD-EMAIL = "imlostish")
               AND (LD-PWD = "imlostish")
                DISPLAY "Login OK."
                PERFORM ACCOUNT-MENU
            ELSE
                DISPLAY "Login failed."
-           END-IF
-       .
+           END-IF.
+           EXIT.
 
-      *> -----------------------------------------------
-         ACCOUNT-MENU.
-           MOVE "N" TO WS-EXIT-FLAG    *> retorna al main-loop al salir
+       ACCOUNT-MENU.
+           MOVE "N" TO WS-EXIT-FLAG    *> return to main-loop
            PERFORM UNTIL EXIT-APP
                DISPLAY "=== ACCOUNT MENU ==="
                DISPLAY "1) Credit cards"
@@ -107,5 +108,5 @@
                  WHEN 4 MOVE "Y" TO WS-EXIT-FLAG
                  WHEN OTHER DISPLAY "Try again."
                END-EVALUATE
-           END-PERFORM
-       .
+           END-PERFORM.
+           EXIT.

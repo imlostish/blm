@@ -12,7 +12,7 @@
          INPUT-OUTPUT SECTION.
        DATA DIVISION.
        WORKING-STORAGE SECTION.
-       COPY "../copybook/user.cpy"
+       COPY "user.cpy"
        LINKAGE SECTION.
        01 LK-ACTION PIC X(20).
        01 LK-DATA   PIC X(30).

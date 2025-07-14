@@ -5,18 +5,16 @@
       *> License: MIT
       *> PLEASE GIVE ME A JOB
       *> ----------------------------------------------------------------
-       identification division.
-       program-id. BLM-PAYMENTS-CONTROLLER.
-       environment division.
-       configuration section.
-         input-output section.
-       data division.
-       working-storage  section.
-       linkage section.
-       file section.
-       procedure division.
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. BLM-PAYMENTS-CONTROLLER.
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       LINKAGE SECTION.
+       PROCEDURE DIVISION.
 
-           display "blm credit card controller"
+           DISPLAY "blm credit card controller"
 
-       stop run.
-       end program BLM-PAYMENTS-CONTROLLER.
+           STOP RUN.
+       END PROGRAM BLM-PAYMENTS-CONTROLLER.
