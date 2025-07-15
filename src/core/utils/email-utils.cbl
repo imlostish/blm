@@ -11,16 +11,17 @@
        DATA DIVISION.
        WORKING-STORAGE SECTION.
 
-       77 WS-EMAIL            PIC X(64).
+       77 WS-EMAIL            PIC X(124) VALUES SPACES.
        77 WS-AT-COUNT         PIC 9(2).
        77 WS-DOT-COUNT        PIC 9(2).
        77 WS-POS-AT           PIC 9(2).
        77 WS-POS-LAST-DOT     PIC 9(2).
-       77 WS-I                PIC 9(2).
+       77 WS-I                PIC 9(3).
        77 WS-CURRENT-CHAR     PIC X.
+       77 WS-SPACE-COUNT      PIC 9(2).
 
        LINKAGE SECTION.
-       01 LK-EMAIL-INPUT      PIC X(64).
+       01 LK-EMAIL-INPUT      PIC X(124).
        01 LK-EMAIL-RET-CODE   PIC S9(4) COMP.
 
        PROCEDURE DIVISION USING LK-EMAIL-INPUT LK-EMAIL-RET-CODE.
@@ -44,8 +45,8 @@
                MOVE 8 TO LK-EMAIL-RET-CODE
                GOBACK.
 
-           IF FUNCTION LENGTH(WS-EMAIL) > 1 AND
-              WS-EMAIL(FUNCTION LENGTH(WS-EMAIL):1) = "@"
+           IF FUNCTION LENGTH(WS-EMAIL) > 0
+              AND WS-EMAIL(FUNCTION LENGTH(WS-EMAIL):1) = "@"
                MOVE 8 TO LK-EMAIL-RET-CODE
                GOBACK.
 
@@ -67,7 +68,8 @@
                GOBACK.
 
            *> Paso 5: sin espacios
-           IF WS-EMAIL CONTAINS SPACE
+           INSPECT LK-EMAIL-INPUT TALLYING WS-SPACE-COUNT FOR ALL " "
+           IF WS-SPACE-COUNT > 0
                MOVE 8 TO LK-EMAIL-RET-CODE
                GOBACK.
 
@@ -75,4 +77,3 @@
            MOVE 0 TO LK-EMAIL-RET-CODE.
 
            GOBACK.
-       .

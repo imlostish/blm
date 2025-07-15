@@ -26,6 +26,7 @@
        77 WS-POS-LAST-DOT     PIC 9(2).
        77 WS-I                PIC 9(2).
        77 WS-CURRENT-CHAR     PIC X.
+       77 WS-SPACE-COUNT      PIC 9(2).
 
        LINKAGE SECTION.
 
@@ -58,11 +59,12 @@
            IF FUNCTION LENGTH(FUNCTION TRIM(LK-INPUT)) < 5
               MOVE 4 TO LK-RET-CODE  *> Username demasiado corto
            ELSE
-               IF LK-INPUT CONTAINS SPACE
-                   MOVE 5 TO LK-RET-CODE *> No se permiten espacios
-               ELSE
-                   MOVE 0 TO LK-RET-CODE
-               END-IF
+           INSPECT LK-INPUT TALLYING WS-SPACE-COUNT FOR ALL " "
+           IF WS-SPACE-COUNT > 0
+               MOVE 5 TO LK-RET-CODE *> No se permiten espacios
+           ELSE
+               MOVE 0 TO LK-RET-CODE
+           END-IF
            END-IF.
            EXIT.
        IS-USERNAME-UNUSED.

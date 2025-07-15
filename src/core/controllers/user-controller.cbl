@@ -12,11 +12,12 @@
          INPUT-OUTPUT SECTION.
        DATA DIVISION.
        WORKING-STORAGE SECTION.
-       COPY "user.cpy"
+       COPY "user.cpy".
+
        LINKAGE SECTION.
-       01 LK-ACTION PIC X(20).
-       01 LK-DATA   PIC X(30).
-       01 LK-RET-CODE PIC S9(4) COMP.
+       01 LK-ACTION    PIC X(20).
+       01 LK-DATA      PIC X(30).
+       01 LK-RET-CODE  PIC S9(4) COMP.
 
        PROCEDURE DIVISION USING LK-ACTION LK-DATA LK-RET-CODE.
 
