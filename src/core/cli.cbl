@@ -18,16 +18,14 @@
        WORKING-STORAGE SECTION.
        COPY 'login-data.cpy'.
        COPY 'register-data.cpy'.
-
-       77 WS-RET-CODE      PIC S9(4) COMP VALUE 0.
-       77 WS-OPTION        PIC 9.
-       77 WS-EXIT-FLAG     PIC X VALUE "N".
+       01 WS-VARS.
+       05 WS-RET-CODE      PIC S9(4) COMP VALUE 0.
+       05 WS-OPTION        PIC 9.
+       05 WS-EXIT-FLAG     PIC X VALUE "N".
            88 EXIT-APP     VALUE "Y".
-       77 WS-ACCOUNT-FLAG  PIC X VALUE "N".
+       05 WS-ACCOUNT-FLAG  PIC X VALUE "N".
            88 LOGGED-IN    VALUE "Y".
            88 REG-SUCCESS  VALUE "Y".
-
-       LINKAGE SECTION.
 
        PROCEDURE DIVISION.
            PERFORM UNTIL EXIT-APP
@@ -52,11 +50,11 @@
        REGISTRATION-PROCESS.
            DISPLAY ">>> REGISTER <<<"
            DISPLAY "User: " WITH NO ADVANCING
-           ACCEPT RD-USERNAME OF REGISTER-DATA
+           ACCEPT RD-USERNAME IN REGISTER-DATA
            DISPLAY "Email: " WITH NO ADVANCING
-           ACCEPT RD-EMAIL OF REGISTER-DATA
+           ACCEPT RD-EMAIL IN REGISTER-DATA
            DISPLAY "Password: " WITH NO ADVANCING
-           ACCEPT RD-PWD OF REGISTER-DATA WITH NO ECHO
+           ACCEPT RD-PWD IN REGISTER-DATA WITH NO ECHO
 
           CALL "BLM-USER-CONTROLLER"
            USING "CREATE-USER", REGISTER-DATA, WS-RET-CODE
@@ -76,9 +74,9 @@
        LOGIN-PROCESS.
            DISPLAY ">>> LOGIN <<<"
            DISPLAY "Email: " WITH NO ADVANCING
-           ACCEPT LD-EMAIL OF LOGIN-DATA
+           ACCEPT LD-EMAIL IN LOGIN-DATA
            DISPLAY "Password: " WITH NO ADVANCING
-           ACCEPT LD-PWD OF LOGIN-DATA WITH NO ECHO
+           ACCEPT LD-PWD IN LOGIN-DATA WITH NO ECHO
            CALL "BLM-USER-AUTH" USING "HASH-PASSWORD",
                                       LD-PWD,
                                       WS-RET-CODE
