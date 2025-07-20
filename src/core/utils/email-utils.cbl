@@ -11,7 +11,7 @@
        DATA DIVISION.
        WORKING-STORAGE SECTION.
 
-       77 WS-EMAIL            PIC X(124) VALUES SPACES.
+       77 WS-EMAIL            PIC X(124) VALUE SPACES.
        77 WS-AT-COUNT         PIC 9(2).
        77 WS-DOT-COUNT        PIC 9(2).
        77 WS-POS-AT           PIC 9(2).
@@ -19,6 +19,7 @@
        77 WS-I                PIC 9(3).
        77 WS-CURRENT-CHAR     PIC X.
        77 WS-SPACE-COUNT      PIC 9(2).
+       77 WS-LEN              PIC 9(3).
 
        LINKAGE SECTION.
        01 LK-EMAIL-INPUT      PIC X(124).
@@ -27,10 +28,10 @@
        PROCEDURE DIVISION USING LK-EMAIL-INPUT LK-EMAIL-RET-CODE.
 
            MOVE FUNCTION TRIM(LK-EMAIL-INPUT) TO WS-EMAIL
+           MOVE FUNCTION LENGTH(FUNCTION TRIM(WS-EMAIL)) TO WS-LEN
 
            *> Paso 1: debe haber exactamente un '@'
-           INSPECT WS-EMAIL TALLYING WS-AT-COUNT FOR ALL "@"
-           IF WS-AT-COUNT NOT = 1
+           IF WS-LEN > 0 AND WS-EMAIL(WS-LEN:1) = "@"
                MOVE 8 TO LK-EMAIL-RET-CODE
                GOBACK.
 
@@ -45,7 +46,7 @@
                MOVE 8 TO LK-EMAIL-RET-CODE
                GOBACK.
 
-           IF FUNCTION LENGTH(WS-EMAIL) > 0
+           IF WS-LEN > 0
               AND WS-EMAIL(FUNCTION LENGTH(WS-EMAIL):1) = "@"
                MOVE 8 TO LK-EMAIL-RET-CODE
                GOBACK.

@@ -12,17 +12,31 @@
 
        DATA DIVISION.
        WORKING-STORAGE SECTION.
-         *> ningún dato en WS necesario aquí
+       01 ARGS-LENGTH        PIC 9(4) COMP.
+       01 I                  PIC 9(4) COMP.
+       01 ARGS-VALUE.
+           05 ARG-VAL        PIC X(100) OCCURS 10 TIMES.
 
-       LINKAGE SECTION.
-         *> ningún parámetro de entrada
+       *> unnecessary variables removed for clarity
 
        PROCEDURE DIVISION.
 
-           DISPLAY ">>> BLM STARTED <<<"
+           PERFORM VARYING I FROM 1 BY 1 UNTIL I > ARGS-LENGTH
+               ACCEPT ARG-VAL(I) FROM ARGUMENT-VALUE(I)
+           END-PERFORM
+
+           IF ARGS-LENGTH > 0
+               CALL "BLM-ARGS-AUTH" USING ARGS-LENGTH, ARGS-VALUE
+                   RETURNING RETURN-CODE
+               IF RETURN-CODE NOT = 0
+                   DISPLAY "Error in ARGS-AUTH module"
+                   STOP RUN
+               END-IF
+           END-IF
+
            CALL "BLM-CLI" RETURNING RETURN-CODE
            IF RETURN-CODE NOT = 0
                DISPLAY "Error in CLI module"
            END-IF
-           DISPLAY "%> Come back soon!"
+
            STOP RUN.
