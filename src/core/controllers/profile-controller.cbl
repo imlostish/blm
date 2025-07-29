@@ -12,7 +12,7 @@
        INPUT-OUTPUT SECTION.
        DATA DIVISION.
        WORKING-STORAGE SECTION.
-       COPY '../copybook/profile.cpy'.
+       COPY '../entities/profile.cpy'.
        PROCEDURE DIVISION.
 
            DISPLAY "blm profile controller"

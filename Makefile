@@ -9,7 +9,7 @@ ATTEMPT := $(shell if [ -f .buildattempt ]; then echo $$(( $$(cat .buildattempt)
 
 # Build Configuration
 
-COPYBOOK_DIR := $(abspath src/core/copybook)
+COPYBOOK_DIR := $(abspath src/core/entities)
 export COB_COPY_DIR := $(COPYBOOK_DIR):$(COB_COPY_DIR)
 
 BUILD_DIR          := build
@@ -18,18 +18,34 @@ BUILD_DEBUG_DIR    := $(BUILD_DIR)/debug
 BUILD_RELEASE_DIR  := $(BUILD_DIR)/release
 BUILD_C_DIR        := $(BUILD_DIR)/c
 BUILD_ASM_DIR      := $(BUILD_DIR)/asm
-BUILD_SBIN_DIR     := $(BUILD_DIR)/sbin
-BUILD_BIN_DIR      := $(BUILD_DIR)/bin
 
 PROFILE_REPORT_DIR := $(BUILD_PROFILE_DIR)/blm-$(VERSION)-$(PLATFORM)-$(ARCH)-$(BUILD_TYPE)-profile-$(ATTEMPT)/report
 DEBUG_REPORT_DIR   := $(BUILD_DEBUG_DIR)/blm-$(VERSION)-$(PLATFORM)-$(ARCH)-$(BUILD_TYPE)-debug
-RELEASE_DIR 	   := $(BUILD_RELEASE_DIR)/blm-$(VERSION)-$(PLATFORM)-$(ARCH)-$(BUILD_TYPE)-build
+RELEASE_DIR 	   := $(BUILD_RELEASE_DIR)/blm-$(VERSION)-$(PLATFORM)-$(ARCH)-$(ATTEMPT)-build
+RELEASE_SINGLE_BIN := $(RELEASE_DIR)/blm-single/blm
+RELEASE_MODULAR_BIN := $(RELEASE_DIR)/blm-modular/blm
 
-RELEASE_SINGLE_BIN 	:= $(RELEASE_DIR)/blm
-RELEASE_MODULAR_BIN := $(RELEASE_DIR)/blm-modular
+# Source Directories and Files
 
+SRC_CORE_DIR          := src/core
+SRC_LIB_DIR           := src/lib
+SRC_PLUGINS_DIR	      := src/plugins
+SRC_TEST_DIR	      := src/test
+
+MAIN_SRC := $(SRC_CORE_DIR)/main.cbl
+CLI_SRC  := $(SRC_CORE_DIR)/cli.cbl
+ALL_CORE_SRC  := $(shell find $(SRC_CORE_DIR) -type f -name '*.cbl')
+# NON_MAIN_SRC := $(filter-out $(MAIN_SRC) $(CLI_SRC), $(ALL_CORE_SRC))
+ASM_TARGETS := $(patsubst $(SRC_CORE_DIR)/%.cbl,$(BUILD_ASM_DIR)/%.asm,$(ALL_CORE_SRC))
+C_TARGETS   := $(patsubst $(SRC_CORE_DIR)/%.cbl,$(BUILD_C_DIR)/%.c,$(ALL_CORE_SRC))
+
+# Module Directories
 MODULE_TYPES := controllers auth utils
-MODULE_DIRS := $(foreach type,$(MODULE_TYPES),$(BUILD_BIN_DIR)/$(type) $(BUILD_ASM_DIR)/$(type) $(BUILD_C_DIR)/$(type))
+MODULE_DIRS := $(foreach type,$(MODULE_TYPES),$(BUILD_ASM_DIR)/$(type) $(BUILD_C_DIR)/$(type))
+MODULAR_OBJ_FILES := $(patsubst $(SRC_CORE_DIR)/%.cbl, \
+                                $(RELEASE_DIR)/blm-modular/%.o, \
+                                $(ALL_CORE_SRC))
+MODULAR_OBJ_DIRS := $(sort $(dir $(MODULAR_OBJ_FILES)))
 
 # Update Attempt File
 # This file is used to track the number of build attempts
@@ -43,6 +59,7 @@ MODULE_DIRS := $(foreach type,$(MODULE_TYPES),$(BUILD_BIN_DIR)/$(type) $(BUILD_A
 # Cobol Compiler Configuration
 
 COBC := cobc
+
 COBC_DEBUG_FLAGS := \
   -g \
   -fsource-location \
@@ -51,33 +68,19 @@ COBC_DEBUG_FLAGS := \
   -fimplicit-goback-check \
   -fsection-exit-check \
   -fno-remove-unreachable \
-  -fno-omit-frame-pointer \
-  -fno-optimize-sibling-calls \
-  -fno-inline \
-  -fno-inline-functions \
-  -fno-inline-small-functions \
-  -fno-inline-functions-called-once \
-  -fno-inline-atomics \
-  -O0
-COBC_BASE_FLAGS := -Wno-missing-newline -Wno-dialect -free -Wall -I$(COPYBOOK_DIR)
+  -U_FORTIFY_SOURCE
+
+COBC_BASE_FLAGS := \
+  -Wno-missing-newline \
+  -Wno-dialect \
+  -free \
+  -Wall \
+  -I$(COPYBOOK_DIR)
+
 COBC_RELEASE_FLAGS := $(COBC_BASE_FLAGS) -O2
-COBC_FULL_DEBUG_FLAGS := $(COBC_BASE_FLAGS) $(COBC_DEBUG_FLAGS) -O0
+COBC_FULL_DEBUG_FLAGS := $(COBC_BASE_FLAGS) $(COBC_DEBUG_FLAGS)
 
-# Source Directories and Files
-
-SRC_DIR          := src/core
-MAIN_SRC         := $(SRC_DIR)/main.cbl
-CLI_SRC          := $(SRC_DIR)/cli.cbl
-
-# Get Source Files for Each Module Type
-define get_sources
-$(wildcard $(SRC_DIR)/$(1)/*.cbl)
-endef
-
-CONTROLLERS_SRC  := $(call get_sources,controllers)
-AUTH_SRC         := $(call get_sources,auth)
-UTILS_SRC        := $(call get_sources,utils)
-
+# Compilation section
 
 .PHONY: all debug release prepare clean test profile
 
@@ -85,11 +88,8 @@ all: prepare c-generation asm-generation release
 
 prepare:
 	@echo "🔧 Preparing build directories..."
-	@mkdir -p $(BUILD_DIR)
-	@mkdir -p $(BUILD_PROFILE_DIR)
-	@mkdir -p $(BUILD_DEBUG_DIR)
-	@mkdir -p $(BUILD_RELEASE_DIR)
-	@mkdir -p $(BUILD_SBIN_DIR)
+	@mkdir -p $(BUILD_DIR) $(BUILD_ASM_DIR) $(BUILD_C_DIR)
+	@mkdir -p $(BUILD_DEBUG_DIR) $(BUILD_RELEASE_DIR) $(BUILD_PROFILE_DIR)
 	@mkdir -p $(MODULE_DIRS)
 	@echo "✅ Build directories prepared"
 
@@ -99,7 +99,7 @@ prepare:
 
 # Debug build
 debug: COBC_FLAGS := $(COBC_FULL_DEBUG_FLAGS)
-debug: prepare debug-single asm-generation c-generation
+debug: prepare asm-generation c-generation
 
 # Release build
 release: COBC_FLAGS := $(COBC_RELEASE_FLAGS)
@@ -110,61 +110,51 @@ release: prepare release-single release-modular
 # -------------------------------------------------------------
 
 # Single binary - Debug
-debug-single: .update-attempt $(DEBUG_REPORT_DIR)
-$(DEBUG_REPORT_DIR): $(MAIN_SRC) $(CLI_SRC) $(CONTROLLERS_SRC) $(AUTH_SRC) $(UTILS_SRC)
-	$(COBC) $(COBC_DEBUG_FLAGS) -x $^ -o $@
-	@mkdir -p $(BUILD_DEBUG_DIR)/debug-info
-	@echo "Debug symbols included" > $(BUILD_DEBUG_DIR)/debug-info/debug-features.txt
-	@echo "Source locations: enabled" >> $(BUILD_DEBUG_DIR)/debug-info/debug-features.txt
-	@echo "Stack tracing: enabled" >> $(BUILD_DEBUG_DIR)/debug-info/debug-features.txt
 
 # Modular - Debug
-# debug-modular: $(BUILD_DEBUG_DIR)/blm-modular-debug
-# $(BUILD_DEBUG_DIR)/blm-modular-debug: $(patsubst $(SRC_DIR)/%,$(BUILD_DEBUG_DIR)/%.o,$(filter-out $(MAIN_SRC) $(CLI_SRC),$(wildcard $(SRC_DIR)/*.cbl)))
-# 	$(COBC) $(COBC_FLAGS) -x $^ -o $@
-# 	@echo "✅ Debug modular binary: $@"
 
 # Single binary - Release
 release-single: BUILD_TYPE := s
 release-single: .update-attempt $(RELEASE_SINGLE_BIN)
-$(RELEASE_SINGLE_BIN): $(MAIN_SRC) $(CLI_SRC) $(CONTROLLERS_SRC) $(AUTH_SRC) $(UTILS_SRC)
-	@mkdir -p $(@D)
-	$(COBC) $(COBC_RELEASE_FLAGS) -x $^ -o $@
-	@mkdir -p $(BUILD_RELEASE_DIR)/reports
-	@echo "Build completed: $$(date)" > $(BUILD_RELEASE_DIR)/reports/build-info.txt
-	@echo "Version: $(VERSION)" >> $(BUILD_RELEASE_DIR)/reports/build-info.txt
-	@echo "Platform: $(PLATFORM)-$(ARCH)" >> $(BUILD_RELEASE_DIR)/reports/build-info.txt
-	@echo "Type: single" >> $(BUILD_RELEASE_DIR)/reports/build-info.txt
+$(RELEASE_SINGLE_BIN): $(ALL_CORE_SRC)
+	@mkdir -p $(dir $@)
+	@echo "Building single release binary: $@"
+	$(COBC) $(COBC_RELEASE_FLAGS) -x  $^ -o $@
 
 # Modular - Release
 release-modular: BUILD_TYPE := m
 release-modular: .update-attempt $(RELEASE_MODULAR_BIN)
-$(RELEASE_MODULAR_BIN): $(patsubst $(SRC_DIR)/%,$(BUILD_RELEASE_DIR)/modules/%.o,$(filter-out $(MAIN_SRC) $(CLI_SRC),$(wildcard $(SRC_DIR)/*.cbl)))
+$(RELEASE_MODULAR_BIN): $(MODULAR_OBJ_FILES)
+	@mkdir -p $(dir $@)
+	@echo "🚀 Enlazando binario MODULAR final: $@"
 	$(COBC) $(COBC_RELEASE_FLAGS) -x $^ -o $@
-	@mkdir -p $(BUILD_RELEASE_DIR)/reports
-	@echo "Build completed: $$(date)" > $(BUILD_RELEASE_DIR)/reports/build-info.txt
-	@echo "Version: $(VERSION)" >> $(BUILD_RELEASE_DIR)/reports/build-info.txt
-	@echo "Platform: $(PLATFORM)-$(ARCH)" >> $(BUILD_RELEASE_DIR)/reports/build-info.txt
-	@echo "Type: modular" >> $(BUILD_RELEASE_DIR)/reports/build-info.txt
-	@echo "Modules:" >> $(BUILD_RELEASE_DIR)/reports/build-info.txt
-	@ls $(BUILD_RELEASE_DIR)/modules >> $(BUILD_RELEASE_DIR)/reports/build-info.txt
+
+
+$(RELEASE_DIR)/blm-modular/%.o: $(SRC_CORE_DIR)/%.cbl
+	@mkdir -p $(@D)
+	@echo "🔧 Compilando módulo: $< → $@"
+	$(COBC) $(COBC_RELEASE_FLAGS) -c $< -o $@
+
 
 # -------------------------------------------------------------
 # Mid Code Generation
 # -------------------------------------------------------------
 
 # Assembly Generation
-asm-generation: $(patsubst $(SRC_DIR)/%.cbl,$(BUILD_ASM_DIR)/%.asm,$(wildcard $(SRC_DIR)/*/*.cbl))
-$(BUILD_ASM_DIR)/%.asm: $(SRC_DIR)/%.cbl
+asm-generation: $(ASM_TARGETS)
+$(BUILD_ASM_DIR)/%.asm: $(SRC_CORE_DIR)/%.cbl
+	@mkdir -p $(@D)
+	@echo "🛠️  Generando ASM de $<"
 	$(COBC) $(COBC_FLAGS) -S $< -o $@
+	@echo "✅ Generado $@"
 
 # C Generation
-c-generation: $(patsubst $(SRC_DIR)/%.cbl,$(BUILD_C_DIR)/%.c,$(wildcard $(SRC_DIR)/*/*.cbl))
-$(BUILD_C_DIR)/%.c: $(SRC_DIR)/%.cbl
+c-generation: $(C_TARGETS)
+$(BUILD_C_DIR)/%.c: $(SRC_CORE_DIR)/%.cbl
 	@mkdir -p $(@D)
-	@echo "Generating C code from $<"
+	@echo "🛠️  Generando código C de $<"
 	$(COBC) $(COBC_FLAGS) -v -C $< -o $@
-	@echo "Generated $@"
+	@echo "✅ Generado $@"
 
 
 # -------------------------------------------------------------
@@ -179,26 +169,28 @@ test: debug
 
 # Profiling
 profile: BUILD_TYPE := s
-profile: COBC_FLAGS := $(COBC_FULL_DEBUG_FLAGS) -pg
-profile: .update-attempt $(PROFILE_REPORT_DIR)
-$(PROFILE_REPORT_DIR): $(MAIN_SRC) $(CLI_SRC) $(CONTROLLERS_SRC) $(AUTH_SRC) $(UTILS_SRC)
-	$(COBC) $(COBC_FLAGS) -x $^ -o $@
+profile: .update-attempt prepare
 	@mkdir -p $(PROFILE_REPORT_DIR)
-	@echo "Profiling build completed: $$(date)" > $(PROFILE_REPORT_DIR)/build-info.txt
-	@echo "Version: $(VERSION)" >> $(PROFILE_REPORT_DIR)/build-info.txt
+	@echo "🔍 Generando perfil de compilación tipo: $(BUILD_TYPE)" | tee $(PROFILE_REPORT_DIR)/compilation.log
+	@echo "Build type: $(BUILD_TYPE)"     >  $(PROFILE_REPORT_DIR)/build-info.txt
+	@echo "Version: $(VERSION)"          >> $(PROFILE_REPORT_DIR)/build-info.txt
 	@echo "Platform: $(PLATFORM)-$(ARCH)" >> $(PROFILE_REPORT_DIR)/build-info.txt
-	@echo "Type: profile" >> $(PROFILE_REPORT_DIR)/build-info.txt
-	@echo "Modules:" >> $(PROFILE_REPORT_DIR)/build-info.txt
-	@ls $(BUILD_PROFILE_DIR) >> $(PROFILE_REPORT_DIR)/build-info.txt
-	@echo "Profiling data generated in $(PROFILE_REPORT_DIR)"
-	@echo "Run 'gprof $(PROFILE_REPORT_DIR) gmon.out' to analyze profiling data"
-	@echo "Run 'gprof $(PROFILE_REPORT_DIR) gmon.out > profile.txt' to save profiling report"
-	@echo "Run 'gprof $(PROFILE_REPORT_DIR) gmon.out | less' to view profiling report"
-	@echo "Run 'gprof $(PROFILE_REPORT_DIR) gmon.out | grep -i 'function_name' to filter profiling report"
-	@echo "📊 Profiling build ready"
+	@echo "Timestamp: $$(date)"          >> $(PROFILE_REPORT_DIR)/build-info.txt
 
-$(BUILD_DIR)/profile/blm_profile: $(MAIN_SRC) $(CLI_SRC) $(CONTROLLERS_SRC) $(AUTH_SRC) $(UTILS_SRC)
-	$(COBC) $(COBC_FLAGS) -x $^ -o $@
+	@{ \
+	  if [ "$(BUILD_TYPE)" = "m" ]; then \
+	    echo "Invocando: make release-modular" | tee -a $(PROFILE_REPORT_DIR)/compilation.log; \
+	    make release-modular 2> >(tee $(PROFILE_REPORT_DIR)/errors.log >&2) \
+	                     | tee -a $(PROFILE_REPORT_DIR)/compilation.log; \
+	  else \
+	    echo "Invocando: make release-single" | tee -a $(PROFILE_REPORT_DIR)/compilation.log; \
+	    make release-single 2> >(tee $(PROFILE_REPORT_DIR)/errors.log >&2) \
+	                     | tee -a $(PROFILE_REPORT_DIR)/compilation.log; \
+	  fi ; \
+	  STATUS=$$?; \
+	  echo "Exit status: $$STATUS" >> $(PROFILE_REPORT_DIR)/build-info.txt; \
+	  exit $$STATUS; \
+	}
 
 # Clean Build
 clean:
