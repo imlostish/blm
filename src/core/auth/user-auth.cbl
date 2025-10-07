@@ -52,7 +52,7 @@
                    DISPLAY "Funcion desconocida en USER-AUTH-UTILS"
                    MOVE 12 TO LK-RET-CODE
            END-EVALUATE
-      
+
            GOBACK.
 
        IS-USERNAME-VALID.
@@ -104,3 +104,4 @@
                MOVE 1 TO LK-RET-CODE
            END-IF.
            EXIT.
+       END PROGRAM BLM-USER-AUTH.

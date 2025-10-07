@@ -39,3 +39,7 @@ git switch feature/new-feature
 ```
 
 and start contributing!
+
+---
+
+> The project was abandoned by problems with compilation and laziness of giving me the time to understand it.

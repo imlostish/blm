@@ -16,5 +16,5 @@
 
            DISPLAY "blm credit card controller"
 
-       STOP RUN.
+           GOBACK.
        END PROGRAM BLM-CC-CONTROLLER.

@@ -78,3 +78,4 @@
            MOVE 0 TO LK-EMAIL-RET-CODE.
 
            GOBACK.
+       END PROGRAM BLM-EMAIL-UTILS.

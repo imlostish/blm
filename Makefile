@@ -22,9 +22,7 @@ BUILD_ASM_DIR      := $(BUILD_DIR)/asm
 PROFILE_REPORT_DIR := $(BUILD_PROFILE_DIR)/blm-$(VERSION)-$(PLATFORM)-$(ARCH)-$(BUILD_TYPE)-profile-$(ATTEMPT)/report
 DEBUG_REPORT_DIR   := $(BUILD_DEBUG_DIR)/blm-$(VERSION)-$(PLATFORM)-$(ARCH)-$(BUILD_TYPE)-debug
 RELEASE_DIR 	   := $(BUILD_RELEASE_DIR)/blm-$(VERSION)-$(PLATFORM)-$(ARCH)-$(ATTEMPT)-build
-RELEASE_SINGLE_BIN := $(RELEASE_DIR)/blm-single/blm
-RELEASE_MODULAR_BIN := $(RELEASE_DIR)/blm-modular/blm
-
+RELEASE_BIN		   := $(RELEASE_DIR)/blm
 # Source Directories and Files
 
 SRC_CORE_DIR          := src/core
@@ -34,18 +32,22 @@ SRC_TEST_DIR	      := src/test
 
 MAIN_SRC := $(SRC_CORE_DIR)/main.cbl
 CLI_SRC  := $(SRC_CORE_DIR)/cli.cbl
-ALL_CORE_SRC  := $(shell find $(SRC_CORE_DIR) -type f -name '*.cbl')
-# NON_MAIN_SRC := $(filter-out $(MAIN_SRC) $(CLI_SRC), $(ALL_CORE_SRC))
+ALL_CORE_SRC := \
+	$(SRC_CORE_DIR)/controllers/payments-controller.cbl \
+	$(SRC_CORE_DIR)/controllers/user-controller.cbl \
+	$(SRC_CORE_DIR)/controllers/creditcard-controller.cbl \
+	$(SRC_CORE_DIR)/controllers/profile-controller.cbl \
+	$(SRC_CORE_DIR)/auth/user-auth.cbl \
+	$(SRC_CORE_DIR)/auth/args-auth.cbl \
+	$(SRC_CORE_DIR)/utils/email-utils.cbl \
+	$(SRC_CORE_DIR)/cli.cbl \
+	$(MAIN_SRC)
 ASM_TARGETS := $(patsubst $(SRC_CORE_DIR)/%.cbl,$(BUILD_ASM_DIR)/%.asm,$(ALL_CORE_SRC))
 C_TARGETS   := $(patsubst $(SRC_CORE_DIR)/%.cbl,$(BUILD_C_DIR)/%.c,$(ALL_CORE_SRC))
 
 # Module Directories
 MODULE_TYPES := controllers auth utils
 MODULE_DIRS := $(foreach type,$(MODULE_TYPES),$(BUILD_ASM_DIR)/$(type) $(BUILD_C_DIR)/$(type))
-MODULAR_OBJ_FILES := $(patsubst $(SRC_CORE_DIR)/%.cbl, \
-                                $(RELEASE_DIR)/blm-modular/%.o, \
-                                $(ALL_CORE_SRC))
-MODULAR_OBJ_DIRS := $(sort $(dir $(MODULAR_OBJ_FILES)))
 
 # Update Attempt File
 # This file is used to track the number of build attempts
@@ -84,7 +86,7 @@ COBC_FULL_DEBUG_FLAGS := $(COBC_BASE_FLAGS) $(COBC_DEBUG_FLAGS)
 
 .PHONY: all debug release prepare clean test profile
 
-all: prepare c-generation asm-generation release
+all: c-generation asm-generation release
 
 prepare:
 	@echo "🔧 Preparing build directories..."
@@ -103,38 +105,12 @@ debug: prepare asm-generation c-generation
 
 # Release build
 release: COBC_FLAGS := $(COBC_RELEASE_FLAGS)
-release: prepare release-single release-modular
-
-# -------------------------------------------------------------
-# Specific Build Targets
-# -------------------------------------------------------------
-
-# Single binary - Debug
-
-# Modular - Debug
-
-# Single binary - Release
-release-single: BUILD_TYPE := s
-release-single: .update-attempt $(RELEASE_SINGLE_BIN)
-$(RELEASE_SINGLE_BIN): $(ALL_CORE_SRC)
+release: prepare .update-attempt $(RELEASE_BIN)
+$(RELEASE_BIN): $(ALL_CORE_SRC)
 	@mkdir -p $(dir $@)
-	@echo "Building single release binary: $@"
-	$(COBC) $(COBC_RELEASE_FLAGS) -x  $^ -o $@
-
-# Modular - Release
-release-modular: BUILD_TYPE := m
-release-modular: .update-attempt $(RELEASE_MODULAR_BIN)
-$(RELEASE_MODULAR_BIN): $(MODULAR_OBJ_FILES)
-	@mkdir -p $(dir $@)
-	@echo "🚀 Enlazando binario MODULAR final: $@"
-	$(COBC) $(COBC_RELEASE_FLAGS) -x $^ -o $@
-
-
-$(RELEASE_DIR)/blm-modular/%.o: $(SRC_CORE_DIR)/%.cbl
-	@mkdir -p $(@D)
-	@echo "🔧 Compilando módulo: $< → $@"
-	$(COBC) $(COBC_RELEASE_FLAGS) -c $< -o $@
-
+	@echo "🚀 Building single release binary: $@"
+	$(COBC) $(COBC_RELEASE_FLAGS) -x $(ALL_CORE_SRC) -o $@
+	@echo "✅ Binary created successfully!"
 
 # -------------------------------------------------------------
 # Mid Code Generation
@@ -195,4 +171,5 @@ profile: .update-attempt prepare
 # Clean Build
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -f .buildattempt
 	@echo "🧹 Build cleaned"

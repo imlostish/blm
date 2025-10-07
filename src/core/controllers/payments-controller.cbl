@@ -14,7 +14,7 @@
        LINKAGE SECTION.
        PROCEDURE DIVISION.
 
-           DISPLAY "blm credit card controller"
+           DISPLAY "blm payments controller"
 
-           STOP RUN.
+           GOBACK.
        END PROGRAM BLM-PAYMENTS-CONTROLLER.

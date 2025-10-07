@@ -17,5 +17,5 @@
 
            DISPLAY "blm profile controller"
 
-       STOP RUN.
+           GOBACK.
        END PROGRAM BLM-PROFILE-CONTROLLER.

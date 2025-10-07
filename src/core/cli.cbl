@@ -26,12 +26,16 @@
        05 WS-ACCOUNT-FLAG  PIC X VALUE "N".
            88 LOGGED-IN    VALUE "Y".
            88 REG-SUCCESS  VALUE "Y".
+       LINKAGE SECTION.
+       77  L-CLI-RET-CODE  PIC S9(4) COMP VALUE 0.
 
-       PROCEDURE DIVISION.
+       PROCEDURE DIVISION RETURNING L-CLI-RET-CODE.
            PERFORM UNTIL EXIT-APP
                PERFORM WELCOME-MENU
            END-PERFORM
-           EXIT PROGRAM.
+
+           MOVE 0 TO L-CLI-RET-CODEk
+           GOBACK.
 
        WELCOME-MENU.
            DISPLAY "=== WELCOME TO BLM ==="
@@ -108,3 +112,4 @@
                END-EVALUATE
            END-PERFORM.
            EXIT.
+       END PROGRAM BLM-CLI.

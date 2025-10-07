@@ -21,22 +21,24 @@
 
        PROCEDURE DIVISION.
 
+           ACCEPT ARGS-LENGTH FROM ARGUMENT-NUMBER.
+
            PERFORM VARYING I FROM 1 BY 1 UNTIL I > ARGS-LENGTH
-               ACCEPT ARG-VAL(I) FROM ARGUMENT-VALUE
+              ACCEPT ARG-VAL(I) FROM ARGUMENT-VALUE
            END-PERFORM.
 
            IF ARGS-LENGTH > 0
-               CALL "BLM-ARGS-AUTH" USING ARGS-LENGTH, ARGS-VALUE
-                   RETURNING RETURN-CODE
-               IF RETURN-CODE NOT = 0
-                   DISPLAY "Error in ARGS-AUTH module"
-                   STOP RUN
-               END-IF
+              CALL "BLM-ARGS-AUTH" USING ARGS-LENGTH, ARGS-VALUE
+                  RETURNING RETURN-CODE
+              IF RETURN-CODE NOT = 0
+                  DISPLAY "Error in ARGS-AUTH module"
+                  STOP RUN
+              END-IF
            END-IF
 
            CALL "BLM-CLI" RETURNING RETURN-CODE
            IF RETURN-CODE NOT = 0
                DISPLAY "Error in CLI module"
-           END-IF
+           END-IF.
 
            STOP RUN.

@@ -18,11 +18,13 @@
        01 L-ARGS-LEN       PIC 9(4) COMP.
        01 L-ARGS-VALUE.
            05 L-ARG-VAL     PIC X(100) OCCURS 10 TIMES.
+       77 L-AUTH-RET-CODE  PIC S9(4) COMP VALUE 0.
+       PROCEDURE DIVISION USING L-ARGS-LEN L-ARGS-VALUE
+       RETURNING L-AUTH-RET-CODE.
 
-
-       PROCEDURE DIVISION USING L-ARGS-LEN, L-ARGS-VALUE.
            PERFORM DEFAULT-RESPONSE
            PERFORM PARSE-ARGUMENTS
+           MOVE 0 TO L-AUTH-RET-CODE
            GOBACK.
 
        DEFAULT-RESPONSE.
@@ -93,8 +95,8 @@
            DISPLAY "  |_ <tr-recipient>: Recipient of the transfer"
            DISPLAY "  --logout: Logout user"
            DISPLAY "  |_ --lg"
-           EXIT PROGRAM.
-      
+           GOBACK.
+
         PARSE-ARGUMENTS.
               PERFORM VARYING WS-ARG-IDX FROM 1 BY 1
                 UNTIL WS-ARG-IDX > L-ARGS-LEN
@@ -120,4 +122,4 @@
                           DISPLAY "Unknown command: " WS-ARG-TEXT
                 END-EVALUATE
               END-PERFORM.
-              EXIT PROGRAM.
+       END PROGRAM BLM-ARGS-AUTH.
